@@ -1,22 +1,21 @@
 version: 0.2
 
-phases:
+env:
+  git-credential-helper: yes
+
+proxy:
+  logs: yes
+
+phase:
   install:
-    commands:
-      # Update libs
-      - yum update
-      # Headless Chrome
-      - yum install -y fonts-liberation libasound2 libnspr4 libnss3 libx11-xcb1 xdg-utils libxss1 libappindicator1 libindicator7
-      - wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-      - dpkg -i google-chrome*.deb
+    runtime-versions:
+      docker: 18
+      python: 3.8
+
   pre_build:
     commands:
-      - npm install
+      - make lambdas
+  
   build:
     commands:
-      - npm run build:ci
-      - npm run test:ci
-  post_build:
-    commands:
-      # - aws s3 sync ./dist/angular-devops s3://angular-devops-production --acl 'public-read' --delete
-      - echo Execution post build phase
+      - make deploy
