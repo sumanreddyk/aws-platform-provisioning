@@ -14,8 +14,8 @@ phase:
 
   pre_build:
     commands:
-      - make lambdas
+      - make prereq
   
   build:
     commands:
-      - make deploy
+      - make deploy11

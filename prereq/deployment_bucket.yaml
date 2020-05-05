@@ -1,0 +1,79 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A deployment bucket for account/region
+
+Parameters:
+  Owner:
+    Description: An owner's login
+    Type: String
+    AllowedPattern: ".+"
+    Default: suman
+
+  Team:
+    Description: An owner's team
+    Type: String
+    AllowedPattern: ".+"
+    Default: "Wss"
+
+  S3KeyId:
+    Description: KMS Key for SSE
+    Type: String
+    Default: c548*******
+
+Resources:
+  ##########################
+  ## S3 bucket
+  #########################
+  DeploymentBucket:
+    Type: "AWS::S3::Bucket"
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "deployment-${AWS::Region}-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws::kms'
+              KMSMasterKeyId: !Ref S3KeyId
+      Tag:
+        - Key: DataClassification
+          Value: Confidential
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Team
+          Value: !Ref Team
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  
+  DeploymentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DeploymentBucket
+      PolicyDocument:
+        Statement:
+          - Sid: "DenyHTTPTraffic"
+            Effect: "Deny"
+            Principal: "*"
+            Action: "s3:*"
+            Resource: !Sub "${DeploymentBucket.Arn}/*"
+            Condition:
+              Bool: "aws:SecureTransport": "false"
+          
+          - Sid: "ForceCMKAtUploadORNoneToUseDefaultEncrption"
+            Effect: "Deny"
+            Principal: "*"
+            Action: "s3:PutObject"
+            Resource: !Sub "${DeploymentBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                "s3:x-amz-server-side-encryption-aws-kms-key-id": !Sub "arn:aws:kms:ap-southeast-2:${AWS::AccountId}:key/${S3KeyId}"
+
+  Outputs:
+    DeploymentBucket:
+      Description:  "Name of CodeBuild bucket for artifacts"
+      Value: !Ref DeploymentBucket
